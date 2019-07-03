@@ -1,0 +1,191 @@
+#!/usr/bin/python3
+
+import time, curses, psutil
+
+
+stdscr = curses.initscr()
+height, width = stdscr.getmaxyx()
+if height < 23 or width < 71:
+    exit (84)
+curses.noecho()
+curses.curs_set(0)
+stdscr.keypad(True)
+stdscr.clear()
+stdscr.refresh()
+stdscr.nodelay(True)
+curses.start_color()
+
+graph_temp = [0] * (width - 4)
+graph_col = [0] * (width - 4)
+a = 1
+
+def get_col(temp):
+    if (temp < 35):
+        return 1
+    elif (temp >= 35 and temp < 40):
+        return 2
+    elif (temp >= 40 and temp < 45):
+        return 3
+    elif (temp >= 45 and temp < 50):
+        return 4
+    elif (temp >= 50 and temp < 55):
+        return 6
+    elif (temp >= 55 and temp < 60):
+        return 7
+    else:
+        return 8
+
+q = 0
+graph_x = 1
+
+curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
+curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_BLUE)
+curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_CYAN)
+curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_GREEN)
+curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_YELLOW)
+curses.init_pair(7, curses.COLOR_BLACK, curses.COLOR_RED)
+curses.init_pair(8, curses.COLOR_BLACK, curses.COLOR_MAGENTA)
+
+while (q != ord('q')):
+    height, width = stdscr.getmaxyx()
+    if height < 23 or width < 71:
+        break
+    try:
+        fo0 = open("/sys/class/thermal/thermal_zone0/temp", "r")
+        fo1 = open("/sys/class/thermal/thermal_zone1/temp", "r")
+        fo2 = open("/sys/class/thermal/thermal_zone2/temp", "r")
+        fo3 = open("/sys/class/thermal/thermal_zone3/temp", "r")
+    except:
+        print ("Cannot find the temp file")
+        exit (84)
+
+    try:
+        line0 = fo0.read(10)
+        line1 = fo1.read(10)
+        line2 = fo2.read(10)
+        line3 = fo3.read(10)
+    except:
+        print ("Exit")
+        exit (84)
+
+    temp0 = (int(line0) / 1000)
+    temp1 = (int(line1) / 1000)
+    temp2 = (int(line2) / 1000)
+    temp3 = (int(line3) / 1000)
+
+    temp = (temp0 + temp1 + temp2 + temp3) / 4
+    temp = int(temp)
+
+    temp_str0 = str(int(temp0)) + "°C "
+    temp_str1 = str(int(temp1)) + "°C "
+    temp_str2 = str(int(temp2)) + "°C "
+    temp_str3 = str(int(temp3)) + "°C "
+    curses.flushinp()
+    stdscr.erase()
+    time.sleep(0.5)
+
+    curses.init_pair(15, curses.COLOR_GREEN, curses.COLOR_BLACK)
+
+    stdscr.addstr(1, 2, "Tempy", curses.color_pair(15))
+    stdscr.addstr(0, 1, "\u2501" * 7)
+    stdscr.addstr(0, 8, "\u2533")
+    stdscr.addstr(1, 8, "\u2503")
+    stdscr.addstr(0, 0, "\u250F")
+    stdscr.addstr(1, 0, "\u2503")     
+    stdscr.addstr(2, 0, "\u2523")
+    stdscr.addstr(2, width - 2, "\u2513")
+    stdscr.addstr(10, 0, "\u2517")
+    
+    stdscr.addstr(10, width - 2, "\u251B")
+    stdscr.addstr(0, 9, "\u2501" * 27)
+    stdscr.addstr(0, 35, "\u2513")
+    stdscr.addstr(1, 35, "\u2503")
+    
+    j = 1
+    while j < width - 2:
+        if j < 9:
+            stdscr.addstr(2, j, "\u2501")
+            stdscr.addstr(10, j, "\u2501")
+        elif (j % 2) == 1:
+            stdscr.addstr(2, j, "\u2501")
+            stdscr.addstr(10, j, "\u2501")
+        else:
+            stdscr.addstr(2, j, "\u2533")
+            stdscr.addstr(10, j, "\u253B")
+        j += 1
+
+    k = 1
+    while k < width - 2:
+        if (k % 2) == 1:
+           stdscr.addstr(23, k, "\u2501") 
+        else:
+            stdscr.addstr(23, k, "\u253B")
+        k += 1
+
+    i = 3
+    while i < 23:
+        if i > 10:
+            stdscr.addstr(i, 0, "\u2523")
+        else:
+            stdscr.addstr(i, 0, "\u2503")
+        stdscr.addstr(i, width - 2, "\u2503")
+        i += 1
+    
+    col0 = get_col(temp0)
+    col1 = get_col(temp1)
+    col2 = get_col(temp2)
+    col3 = get_col(temp3)
+
+    stdscr.addstr(3, 8, " " * int(temp0 - 10), curses.color_pair(col0))
+    stdscr.addstr(3, 2, temp_str0)
+    stdscr.addstr(5, 8, " " * int(temp1 - 10), curses.color_pair(col1))
+    stdscr.addstr(5, 2, temp_str1)
+    stdscr.addstr(7, 8, " " * int(temp2 - 10), curses.color_pair(col2))
+    stdscr.addstr(7, 2, temp_str2)
+    stdscr.addstr(9, 8, " " * int(temp3 - 10), curses.color_pair(col3))
+    stdscr.addstr(9, 2, temp_str3)
+    stdscr.addstr(1, 10, time.ctime())
+    stdscr.addstr(2, 8, "\u254B")
+    stdscr.addstr(2, 35, "\u253B")
+    stdscr.addstr(10, 8, "\u253B")
+    stdscr.addstr(23, 0, "\u2517")
+    stdscr.addstr(23, width - 2, "\u251B")
+    stdscr.addstr(10, 0, "\u2523")
+    stdscr.addstr(10, width - 2, "\u252B")
+
+    temp_col = get_col(temp)
+
+    if a == width - 4 or a == len(graph_temp) - 1:
+        graph_temp = [0] * (width - 4)
+        a = 1
+        graph_col = [0] * (width - 4)
+    graph_temp[a] = temp * 0.32
+    graph_temp[a] = int((16.32 / graph_temp[a]) * 16)
+    graph_col[a] = get_col(temp)
+
+    if graph_temp[a] <= 12:
+        graph_temp[a] = 12
+    elif graph_temp[a] >= 22:
+        graph_temp[a] = 22
+
+
+    b = 1
+    d = 1
+    while b < width - 4:
+        if graph_temp[b] == 0:
+            break
+        c = graph_temp[b]
+        d = graph_col[b]
+        while c < 23:
+            stdscr.addstr(c, b, " ", curses.color_pair(d))
+            c += 1
+        b += 1
+    a += 1
+    
+    q = stdscr.getch()
+
+
+curses.nocbreak()
+stdscr.keypad(False)
+curses.echo()
+curses.endwin()
