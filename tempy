@@ -5,7 +5,9 @@ import time, curses, psutil
 
 stdscr = curses.initscr()
 height, width = stdscr.getmaxyx()
-if height < 23 or width < 71:
+graph_bottom = 23
+if height < graph_bottom or width < 71:
+    print("Terminal is too small it should be a least 71x" + str(graph_bottom + 1))
     exit (84)
 curses.noecho()
 curses.curs_set(0)
@@ -15,9 +17,9 @@ stdscr.refresh()
 stdscr.nodelay(True)
 curses.start_color()
 
-graph_temp = [0] * (width - 4)
-graph_col = [0] * (width - 4)
-a = 1
+graph_temp = [0] * (width - 3)
+graph_col = [0] * (width - 3)
+temp_pos_x = width - 4
 
 def get_col(temp):
     if (temp < 35):
@@ -35,7 +37,8 @@ def get_col(temp):
     else:
         return 8
 
-q = 0
+exit_key = 0
+exit_msg = 0
 graph_x = 1
 
 curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
@@ -46,9 +49,10 @@ curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_YELLOW)
 curses.init_pair(7, curses.COLOR_BLACK, curses.COLOR_RED)
 curses.init_pair(8, curses.COLOR_BLACK, curses.COLOR_MAGENTA)
 
-while (q != ord('q')):
+while (exit_key != ord('q')):
     height, width = stdscr.getmaxyx()
-    if height < 23 or width < 71:
+    if height < graph_bottom or width < 71:
+        exit_msg = 1
         break
     try:
         fo0 = open("/sys/class/thermal/thermal_zone0/temp", "r")
@@ -73,7 +77,7 @@ while (q != ord('q')):
     temp2 = (int(line2) / 1000)
     temp3 = (int(line3) / 1000)
 
-    temp = (temp0 + temp1 + temp2 + temp3) / 4
+    temp = (temp0 + temp1 + temp3) / 3
     temp = int(temp)
 
     temp_str0 = str(int(temp0)) + "°C "
@@ -82,7 +86,7 @@ while (q != ord('q')):
     temp_str3 = str(int(temp3)) + "°C "
     curses.flushinp()
     stdscr.erase()
-    time.sleep(0.5)
+    time.sleep(0.15)
 
     curses.init_pair(15, curses.COLOR_GREEN, curses.COLOR_BLACK)
 
@@ -117,13 +121,13 @@ while (q != ord('q')):
     k = 1
     while k < width - 2:
         if (k % 2) == 1:
-           stdscr.addstr(23, k, "\u2501") 
+           stdscr.addstr(graph_bottom, k, "\u2501") 
         else:
-            stdscr.addstr(23, k, "\u253B")
+            stdscr.addstr(graph_bottom, k, "\u253B")
         k += 1
 
     i = 3
-    while i < 23:
+    while i < graph_bottom:
         if i > 10:
             stdscr.addstr(i, 0, "\u2523")
         else:
@@ -148,14 +152,14 @@ while (q != ord('q')):
     stdscr.addstr(2, 8, "\u254B")
     stdscr.addstr(2, 35, "\u253B")
     stdscr.addstr(10, 8, "\u253B")
-    stdscr.addstr(23, 0, "\u2517")
-    stdscr.addstr(23, width - 2, "\u251B")
+    stdscr.addstr(graph_bottom, 0, "\u2517")
+    stdscr.addstr(graph_bottom, width - 2, "\u251B")
     stdscr.addstr(10, 0, "\u2523")
     stdscr.addstr(10, width - 2, "\u252B")
 
     temp_col = get_col(temp)
 
-    if a == width - 4 or a == len(graph_temp) - 1:
+    """if a == width - 4 or a == len(graph_temp) - 1:
         graph_temp = [0] * (width - 4)
         a = 1
         graph_col = [0] * (width - 4)
@@ -174,18 +178,56 @@ while (q != ord('q')):
     while b < width - 4:
         if graph_temp[b] == 0:
             break
-        c = graph_temp[b]
+       temp_pos_y = graph_temp[b]
         d = graph_col[b]
-        while c < 23:
+        whiletemp_pos_y < graph_bottom:
             stdscr.addstr(c, b, " ", curses.color_pair(d))
-            c += 1
+           temp_pos_y += 1
         b += 1
-    a += 1
+    """
+
+        
+    temp_pos_x -= 1
+
+    if temp_pos_x < 2:
+        temp_pos_x = width - 4
+
+    graph_temp[temp_pos_x] = temp * 0.32
+    graph_temp[temp_pos_x] = int((16.32 / graph_temp[temp_pos_x]) * 16)
+    graph_col[temp_pos_x] = get_col(temp)
+    temp_pos_y = graph_temp[temp_pos_x]
+
+    if graph_temp[temp_pos_x] <= 12:
+        graph_temp[temp_pos_x] = 12
+    elif graph_temp[temp_pos_x] >= graph_bottom - 1:
+        graph_temp[temp_pos_x] = graph_bottom - 1
+
+    current_temp_x = width - 4
+    current_temp_y = temp_pos_y
+    while current_temp_x > 2:
+        if graph_temp[current_temp_x] == 0:
+            break
+        
+
+    while temp_pos_y < graph_bottom:
+        stdscr.addstr(temp_pos_y, temp_pos_x, " ", curses.color_pair(graph_col[temp_pos_x]))
+        temp_pos_y += 1
+
+
+
+
+
+
     
-    q = stdscr.getch()
+
+    stdscr.addstr(11, 2, "temp_pos_x = " + str(temp_pos_x))
+    stdscr.addstr(12, 2, "width = " + str(width - 4))
+    exit_key = stdscr.getch()
 
 
 curses.nocbreak()
 stdscr.keypad(False)
 curses.echo()
 curses.endwin()
+if exit_msg == 1:
+    print("Terminal is too small it should be a least 71x" + str(graph_bottom + 1))
