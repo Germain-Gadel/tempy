@@ -2,41 +2,73 @@
 
 import time, curses, psutil
 
-stdscr = curses.initscr()
-height, width = stdscr.getmaxyx()
-if height < 23 or width < 71:
-    exit(84)
-curses.noecho()
-curses.curs_set(0)
-stdscr.keypad(True)
-stdscr.clear()
-stdscr.refresh()
-stdscr.nodelay(True)
-curses.start_color()
 
-graph_temp = [0] * (width - 4)
-graph_col = [0] * (width - 4)
-a = 1
+def get_temp_dict(stdscr):
+    temp_dict = psutil.sensors_temperatures()
+    stdscr.clear()
+    return (temp_dict)
 
 
-def get_col(temp):
+def get_temp_list(temp):
+    avg_temp = 0.0
+    i = 0
+    for name, entries in temp.items():
+        for entry in entries:
+            if float(entry.current) != 0.0:
+                i += 1
+                avg_temp += entry.current
+    avg_temp = avg_temp / i
+    return (int(avg_temp))
+
+
+def print_detailed_temps(stdscr, temps_dict, height, width):
+    stdscr.addstr(2, 1, "\u2501" * int(width - 2))
+    i = 3
+    for name, entries in temps_dict.items():
+        for entry in entries:
+            if float(entry.current) != 0.0 and i < (height - 2):
+                stdscr.addstr(i, 2, "%s\t" % (entry.label or name))
+                stdscr.addstr(
+                    i, 16, "%s°C" % (entry.current),
+                    curses.color_pair(get_col(int(entry.current), 1)))
+                i += 2
+    i -= 1
+    stdscr.addstr(height - 1, 1, "\u2501" * 22)
+    stdscr.addstr(height - 1, 0, "\u2517")
+    stdscr.addstr(2, 8, "\u253B")
+    stdscr.addstr(2, 35, "\u253B")
+    stdscr.addstr(2, width - 1, "\u2513")
+    stdscr.addstr(height - 1, 23, "\u253B")
+
+    for x in range(3, height - 1):
+        stdscr.addstr(x, 0, "\u2503")
+        stdscr.addstr(x, 23, "\u2503")
+    stdscr.addstr(2, 0, "\u2523")
+    stdscr.addstr(2, 23, "\u2533")
+
+
+def get_col(temp, background):
+    col = 1
     if (temp < 35):
-        return 1
+        col = 1
     elif (temp >= 35 and temp < 40):
-        return 2
+        col = 2
     elif (temp >= 40 and temp < 45):
-        return 3
+        col = 3
     elif (temp >= 45 and temp < 50):
-        return 4
+        col = 4
     elif (temp >= 50 and temp < 55):
-        return 6
+        col = 6
     elif (temp >= 55 and temp < 60):
-        return 7
+        col = 7
     else:
-        return 8
+        col = 8
+    if background == 1:
+        return col * 11
+    return col
 
 
-def draw_name_date_box():
+def draw_name_date_box(stdscr):
     stdscr.addstr(1, 2, "Tempy", curses.color_pair(15))
     stdscr.addstr(1, 10, time.ctime())
     stdscr.addstr(0, 1, "\u2501" * 7)
@@ -45,60 +77,22 @@ def draw_name_date_box():
     stdscr.addstr(1, 8, "\u2503")
     stdscr.addstr(0, 0, "\u250F")
     stdscr.addstr(1, 0, "\u2503")
-    stdscr.addstr(2, 0, "\u2517")
     stdscr.addstr(2, 8, "\u253B")
-    stdscr.addstr(2, 35, "\u251B")
     stdscr.addstr(0, 9, "\u2501" * 26)
     stdscr.addstr(0, 35, "\u2513")
     stdscr.addstr(1, 35, "\u2503")
-    stdscr.addstr(2, 9, "\u2501" * 26)
+    for x in range(9, 26):
+        if x == 23:
+            stdscr.addstr(2, 23, "\u2533")
+        else:
+            stdscr.addstr(2, x, "\u2501")
 
 
-def draw_little_temp(width):
-    stdscr.addstr(2, 1, "\u2501" * int(width - 2))
-    stdscr.addstr(10, 1, "\u2501" * int(width - 2))
-    stdscr.addstr(10, 0, "\u2517")
-    stdscr.addstr(2, 8, "\u253B")
-    stdscr.addstr(2, 35, "\u253B")
-    stdscr.addstr(2, width - 1, "\u2513")
-    stdscr.addstr(10, width - 1, "\u251B")
-    stdscr.addstr(2, 0, "\u2523")
-    for x in range(3, 10):
-        stdscr.addstr(x, 0, "\u2503")
-        stdscr.addstr(x, width - 1, "\u2503")
-
-    col0 = get_col(temp0)
-    col1 = get_col(temp1)
-    col2 = get_col(temp2)
-    col3 = get_col(temp3)
-
-    actual_width = width - 9
-    stdscr.addstr(3, 1, "\u25B6")
-    stdscr.addstr(3, 3, temp_str0)
-    stdscr.addstr(3, 9, " " * int(temp0 * (actual_width / 90)),
-                  curses.color_pair(col0))
-    stdscr.addstr(5, 1, "\u25B6")
-    stdscr.addstr(5, 3, temp_str1)
-    stdscr.addstr(5, 9, " " * int(temp1 * (actual_width / 90)),
-                  curses.color_pair(col1))
-    stdscr.addstr(7, 1, "\u25B6")
-    stdscr.addstr(7, 3, temp_str2)
-    stdscr.addstr(7, 9, " " * int(temp2 * (actual_width / 90)),
-                  curses.color_pair(col2))
-    stdscr.addstr(9, 1, "\u25B6")
-    stdscr.addstr(9, 3, temp_str3)
-    stdscr.addstr(9, 9, " " * int(temp3 * (actual_width / 90)),
-                  curses.color_pair(col3))
-
-
-def draw_big_box_temp(width, height):
-    for y in range(11, height - 1):
-        stdscr.addstr(y, 0, "\u2503")
+def draw_big_box_temp(stdscr, width, height):
+    for y in range(3, height - 1):
         stdscr.addstr(y, width - 1, "\u2503")
-    stdscr.addstr(10, 0, "\u2523")
-    stdscr.addstr(10, width - 1, "\u252B")
-    for k in range(1, width - 1):
-        if (k % 2) == 1:
+    for k in range(24, width - 1):
+        if (k % 2) == 0:
             stdscr.addstr(height - 1, k, "\u2501")
         else:
             stdscr.addstr(height - 1, k, "\u253B")
@@ -106,84 +100,90 @@ def draw_big_box_temp(width, height):
     stdscr.insstr(height - 1, width - 1, "\u251B")
 
 
-stored_temp = []
-q = 0
-graph_x = 1
-y = width - 2
-
-curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
-curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_CYAN)
-curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_BLUE)
-curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_GREEN)
-curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_YELLOW)
-curses.init_pair(7, curses.COLOR_BLACK, curses.COLOR_RED)
-curses.init_pair(8, curses.COLOR_BLACK, curses.COLOR_MAGENTA)
-
-while (q != ord('q')):
-    height, width = stdscr.getmaxyx()
-    if height < 14 or width < 52:
-        break
-    curses.flushinp()
-    stdscr.erase()
-    time.sleep(0.1)
-
-    curses.init_pair(15, curses.COLOR_GREEN, curses.COLOR_BLACK)
-
-    try:
-        fo0 = open("/sys/class/thermal/thermal_zone0/temp", "r")
-        fo1 = open("/sys/class/thermal/thermal_zone1/temp", "r")
-        fo2 = open("/sys/class/thermal/thermal_zone2/temp", "r")
-        fo3 = open("/sys/class/thermal/thermal_zone3/temp", "r")
-    except:
-        print("Cannot find the temp file")
-        exit(84)
-
-    try:
-        line0 = fo0.read(10)
-        line1 = fo1.read(10)
-        line2 = fo2.read(10)
-        line3 = fo3.read(10)
-    except:
-        print("Exit")
-        exit(84)
-
-    temp0 = (int(line0) / 1000)
-    temp1 = (int(line1) / 1000)
-    temp2 = (int(line2) / 1000)
-    temp3 = (int(line3) / 1000)
-
-    temp = (temp0 + temp1 + temp2 + temp3) / 4
-    temp = int(temp)
-
-    temp_str0 = str(int(temp0)) + "°C "
-    temp_str1 = str(int(temp1)) + "°C "
-    temp_str2 = str(int(temp2)) + "°C "
-    temp_str3 = str(int(temp3)) + "°C "
-
-    draw_name_date_box()
-    draw_little_temp(width)
-    draw_big_box_temp(width, height)
-
-    usable_temp_height = height - 13
-
-    stored_temp.append(temp)
+def draw_temp(stdscr, stored_temp, height, width):
     bar_pos = width - 2
+    usable_temp_height = height - 5
 
     for temp_value in reversed(stored_temp):
-        temp_col = get_col(temp_value)
+        temp_col = get_col(temp_value, 0)
         for x in range(height - 2,
                        height - int(usable_temp_height * (temp_value / 80)),
                        -1):
             stdscr.addstr(x, bar_pos, " ", curses.color_pair(temp_col))
         bar_pos -= 1
-        if bar_pos < 1:
+        if bar_pos < 24:
             break
 
-    stored_temp = stored_temp[-2000:]
 
-    q = stdscr.getch()
+def init_curses_pair():
+    curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
+    curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_CYAN)
+    curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_BLUE)
+    curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_GREEN)
+    curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_YELLOW)
+    curses.init_pair(7, curses.COLOR_BLACK, curses.COLOR_RED)
+    curses.init_pair(8, curses.COLOR_BLACK, curses.COLOR_MAGENTA)
+    curses.init_pair(11, curses.COLOR_WHITE, curses.COLOR_BLACK)
+    curses.init_pair(22, curses.COLOR_CYAN, curses.COLOR_BLACK)
+    curses.init_pair(33, curses.COLOR_BLUE, curses.COLOR_BLACK)
+    curses.init_pair(44, curses.COLOR_GREEN, curses.COLOR_BLACK)
+    curses.init_pair(66, curses.COLOR_YELLOW, curses.COLOR_BLACK)
+    curses.init_pair(77, curses.COLOR_RED, curses.COLOR_BLACK)
+    curses.init_pair(88, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
+    curses.init_pair(15, curses.COLOR_GREEN, curses.COLOR_BLACK)
 
-curses.nocbreak()
-stdscr.keypad(False)
-curses.echo()
-curses.endwin()
+
+def exit_curses(stdscr):
+    curses.nocbreak()
+    stdscr.keypad(False)
+    curses.echo()
+    curses.endwin()
+
+
+def init_curses():
+    stdscr = curses.initscr()
+    height, width = stdscr.getmaxyx()
+    if height < 23 or width < 71:
+        print("terminal too small")
+        exit(84)
+    curses.noecho()
+    curses.curs_set(0)
+    stdscr.keypad(True)
+    stdscr.clear()
+    stdscr.refresh()
+    stdscr.nodelay(True)
+    curses.start_color()
+    init_curses_pair()
+    return stdscr, height, width
+
+
+def main():
+    stdscr, height, width = init_curses()
+    stored_temp = []
+    exit_key = 0
+
+    while (exit_key != ord('q')):
+        height, width = stdscr.getmaxyx()
+        if height < 14 or width < 52:
+            break
+        curses.flushinp()
+        stdscr.erase()
+        time.sleep(0.1)
+
+        temp_dict = get_temp_dict(stdscr)
+        avg_temp = get_temp_list(temp_dict)
+        temp_list = print_detailed_temps(stdscr, temp_dict, height, width)
+        draw_name_date_box(stdscr)
+        draw_big_box_temp(stdscr, width, height)
+
+        stored_temp.append(avg_temp)
+        draw_temp(stdscr, stored_temp, height, width)
+        stored_temp = stored_temp[-2000:]
+
+        exit_key = stdscr.getch()
+
+    exit_curses(stdscr)
+
+
+if __name__ == '__main__':
+    main()
