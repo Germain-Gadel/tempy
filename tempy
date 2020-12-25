@@ -100,10 +100,13 @@ def draw_big_box_temp(stdscr, width, height):
     stdscr.insstr(height - 1, width - 1, "\u251B")
 
 
-def draw_temp(stdscr, stored_temp, height, width):
+def draw_temp(stdscr, stored_temp, avg_temp, height, width):
     bar_pos = width - 2
     usable_temp_height = height - 5
 
+    stdscr.addstr(3, 24, "Average Temp")
+    stdscr.addstr(3, 37, "%s°C" % (avg_temp),
+                  curses.color_pair(get_col(int(avg_temp), 1)))
     for temp_value in reversed(stored_temp):
         temp_col = get_col(temp_value, 0)
         for x in range(height - 2,
@@ -177,7 +180,7 @@ def main():
         draw_big_box_temp(stdscr, width, height)
 
         stored_temp.append(avg_temp)
-        draw_temp(stdscr, stored_temp, height, width)
+        draw_temp(stdscr, stored_temp, avg_temp, height, width)
         stored_temp = stored_temp[-2000:]
 
         exit_key = stdscr.getch()
