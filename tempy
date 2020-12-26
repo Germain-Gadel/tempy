@@ -3,10 +3,8 @@
 import time, curses, psutil
 
 
-def get_temp_dict(stdscr):
-    temp_dict = psutil.sensors_temperatures()
-    stdscr.clear()
-    return (temp_dict)
+def get_temp_dict():
+    return psutil.sensors_temperatures()
 
 
 def get_temp_list(temp):
@@ -160,28 +158,105 @@ def init_curses():
     return stdscr, height, width
 
 
+def temp_screen(stdscr, height, width, stored_temp):
+    temp_dict = get_temp_dict()
+    avg_temp = get_temp_list(temp_dict)
+    temp_list = print_detailed_temps(stdscr, temp_dict, height, width)
+    draw_name_date_box(stdscr)
+    draw_big_box_temp(stdscr, width, height)
+
+    stored_temp.append(avg_temp)
+    draw_temp(stdscr, stored_temp, avg_temp, height, width)
+    stored_temp = stored_temp[-2000:]
+    return stored_temp
+
+
+def get_cpu_dict():
+    return psutil.cpu_times()
+
+
+def print_detailed_cpu(stdscr, cpu_dict, height, width):
+    stdscr.addstr(2, 1, "\u2501" * int(width - 2))
+    i = 3
+    for name, entries in cpu_dict.items():
+        for entry in entries:
+            if float(entry.current) != 0.0 and i < (height - 2):
+                stdscr.addstr(i, 2, "%s\t" % (entry.label or name))
+                stdscr.addstr(i, 16, "%s°C" % (entry.current))
+                i += 2
+    i -= 1
+    stdscr.addstr(height - 1, 1, "\u2501" * 22)
+    stdscr.addstr(height - 1, 0, "\u2517")
+    stdscr.addstr(2, 8, "\u253B")
+    stdscr.addstr(2, 35, "\u253B")
+    stdscr.addstr(2, width - 1, "\u2513")
+    stdscr.addstr(height - 1, 23, "\u253B")
+
+    for x in range(3, height - 1):
+        stdscr.addstr(x, 0, "\u2503")
+        stdscr.addstr(x, 23, "\u2503")
+    stdscr.addstr(2, 0, "\u2523")
+    stdscr.addstr(2, 23, "\u2533")
+
+
+def draw_cpu(stdscr, stored_cpu, cpu_percent, height, width):
+    bar_pos = width - 2
+    usable_temp_height = height - 5
+
+    stdscr.addstr(3, 24, "Average CPU")
+    stdscr.addstr(3, 37, "%s%%" % (cpu_percent),
+                  curses.color_pair(get_col(int(cpu_percent), 1)))
+    for cpu_value in reversed(stored_cpu):
+        cpu_col = get_col(cpu_value, 0)
+        if cpu_value > 15:
+            for x in range(
+                    height - 2,
+                    height - int(usable_temp_height * (cpu_value / 100)), -1):
+                stdscr.addstr(x, bar_pos, " ", curses.color_pair(cpu_col))
+        else:
+            stdscr.addstr(height - 2, bar_pos, " ", curses.color_pair(cpu_col))
+
+        bar_pos -= 1
+        if bar_pos < 24:
+            break
+
+
+def cpu_screen(stdscr, height, width, stored_cpu):
+    cpu_dict = get_cpu_dict()
+    draw_name_date_box(stdscr)
+    #print_detailed_cpu(stdscr, cpu_dict, height, width)
+    draw_big_box_temp(stdscr, width, height)
+
+    cpu_percent = psutil.cpu_percent()
+    draw_cpu(stdscr, stored_cpu, cpu_percent, height, width)
+    stored_cpu.append(cpu_percent)
+    return stored_cpu
+
+
 def main():
     stdscr, height, width = init_curses()
     stored_temp = []
+    stored_cpu = []
     exit_key = 0
+    screen = 0
 
-    while (exit_key != ord('q')):
+    while exit_key != ord('q'):
         height, width = stdscr.getmaxyx()
         if height < 14 or width < 52:
             break
         curses.flushinp()
         stdscr.erase()
         time.sleep(0.1)
+        stdscr.clear()
 
-        temp_dict = get_temp_dict(stdscr)
-        avg_temp = get_temp_list(temp_dict)
-        temp_list = print_detailed_temps(stdscr, temp_dict, height, width)
-        draw_name_date_box(stdscr)
-        draw_big_box_temp(stdscr, width, height)
-
-        stored_temp.append(avg_temp)
-        draw_temp(stdscr, stored_temp, avg_temp, height, width)
-        stored_temp = stored_temp[-2000:]
+        if exit_key == ord('1'):
+            screen = 0
+        elif exit_key == ord('2'):
+            screen = 1
+        if screen == 0:
+            stored_temp = temp_screen(stdscr, height, width, stored_temp)
+        elif screen == 1:
+            stored_cpu = cpu_screen(stdscr, height, width, stored_cpu)
 
         exit_key = stdscr.getch()
 
